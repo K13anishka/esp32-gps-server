@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ESP32 GPS Control</title>
+  <title>ESP32 GPS Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
@@ -10,7 +10,7 @@
       color: white;
       font-family: Arial;
       text-align: center;
-      padding: 25px;
+      padding: 20px;
     }
     .card {
       background: #1e293b;
@@ -35,7 +35,7 @@
 </head>
 <body>
   <h1>ESP32 GPS Dashboard</h1>
-  <p id="status">Connecting to server...</p>
+  <p id="status">Connecting...</p>
 
   <div class="card">
     <h2>Live GPS Location</h2>
@@ -44,28 +44,28 @@
     <p>Satellites: <span id="sat">--</span></p>
     <p>GPS Valid: <span id="valid">--</span></p>
     <p>Last Update: <span id="time">--</span></p>
-    <a id="map" href="#" target="_blank">Open Location in Google Maps</a>
+    <a id="map" href="#" target="_blank">
+      Open Location in Google Maps
+    </a>
   </div>
 
   <div class="card">
     <h2>Remote ESP32 Control</h2>
-    <button class="on" onclick="sendCommand('LED_ON')">
-      LED ON
-    </button>
-    <button class="off" onclick="sendCommand('LED_OFF')">
-      LED OFF
-    </button>
-    <p id="commandStatus">Waiting for command...</p>
+    <button class="on" onclick="sendCommand('LED_ON')">LED ON</button>
+    <button class="off" onclick="sendCommand('LED_OFF')">LED OFF</button>
+    <p id="commandStatus">Waiting...</p>
   </div>
 
   <script>
-    // Replace this with your deployed Render URL
-    const SERVER = "https://esp32-gps-server-1.onrender.com/";
+    const SERVER = window.location.origin;
 
     async function updateGPS() {
       try {
-        const response = await fetch(SERVER + "/api/latest");
-        if (!response.ok) throw new Error("Server error");
+        const response = await fetch(`${SERVER}/api/latest`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
         const d = await response.json();
 
@@ -85,33 +85,44 @@
           d.valid ? "YES" : "NO";
 
         document.getElementById("time").innerText =
-          d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString() : "--";
+          d.updatedAt
+            ? new Date(d.updatedAt).toLocaleTimeString()
+            : "--";
 
         if (d.valid && d.latitude != null && d.longitude != null) {
           document.getElementById("map").href =
             `https://www.google.com/maps?q=${d.latitude},${d.longitude}`;
         }
+
       } catch (error) {
         document.getElementById("status").innerText =
-          "Server disconnected";
+          "Connection error: " + error.message;
+        console.error(error);
       }
     }
 
     async function sendCommand(action) {
       try {
-        const response = await fetch(SERVER + "/api/command", {
+        const response = await fetch(`${SERVER}/api/command`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({ action })
         });
 
-        if (!response.ok) throw new Error("Command failed");
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Command failed");
+        }
 
         document.getElementById("commandStatus").innerText =
           "Command sent: " + action;
+
       } catch (error) {
         document.getElementById("commandStatus").innerText =
-          "Command failed";
+          error.message;
       }
     }
 
