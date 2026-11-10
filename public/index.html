@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 GPS Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background: #101827;
+      color: white;
+      font-family: Arial;
+      text-align: center;
+      padding: 25px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 22px;
+      margin: 15px auto;
+      max-width: 450px;
+      border-radius: 15px;
+    }
+    h1 { color: #38bdf8; }
+    button {
+      padding: 15px 25px;
+      margin: 8px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .on { background: #22c55e; }
+    .off { background: #ef4444; color: white; }
+    a { color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <h1>ESP32 GPS Dashboard</h1>
+  <p id="status">Connecting to server...</p>
+
+  <div class="card">
+    <h2>Live GPS Location</h2>
+    <p>Latitude: <span id="lat">--</span></p>
+    <p>Longitude: <span id="lon">--</span></p>
+    <p>Satellites: <span id="sat">--</span></p>
+    <p>GPS Valid: <span id="valid">--</span></p>
+    <p>Last Update: <span id="time">--</span></p>
+    <a id="map" href="#" target="_blank">Open Location in Google Maps</a>
+  </div>
+
+  <div class="card">
+    <h2>Remote ESP32 Control</h2>
+    <button class="on" onclick="sendCommand('LED_ON')">
+      LED ON
+    </button>
+    <button class="off" onclick="sendCommand('LED_OFF')">
+      LED OFF
+    </button>
+    <p id="commandStatus">Waiting for command...</p>
+  </div>
+
+  <script>
+    // Replace this with your deployed Render URL
+    const SERVER = "https://YOUR-APP.onrender.com";
+
+    async function updateGPS() {
+      try {
+        const response = await fetch(SERVER + "/api/latest");
+        if (!response.ok) throw new Error("Server error");
+
+        const d = await response.json();
+
+        document.getElementById("status").innerText =
+          "Connected to server";
+
+        document.getElementById("lat").innerText =
+          d.latitude ?? "--";
+
+        document.getElementById("lon").innerText =
+          d.longitude ?? "--";
+
+        document.getElementById("sat").innerText =
+          d.satellites ?? "--";
+
+        document.getElementById("valid").innerText =
+          d.valid ? "YES" : "NO";
+
+        document.getElementById("time").innerText =
+          d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString() : "--";
+
+        if (d.valid && d.latitude != null && d.longitude != null) {
+          document.getElementById("map").href =
+            `https://www.google.com/maps?q=${d.latitude},${d.longitude}`;
+        }
+      } catch (error) {
+        document.getElementById("status").innerText =
+          "Server disconnected";
+      }
+    }
+
+    async function sendCommand(action) {
+      try {
+        const response = await fetch(SERVER + "/api/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+
+        if (!response.ok) throw new Error("Command failed");
+
+        document.getElementById("commandStatus").innerText =
+          "Command sent: " + action;
+      } catch (error) {
+        document.getElementById("commandStatus").innerText =
+          "Command failed";
+      }
+    }
+
+    updateGPS();
+    setInterval(updateGPS, 2000);
+  </script>
+</body>
+</html>
